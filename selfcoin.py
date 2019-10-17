@@ -2,7 +2,12 @@ from time import time
 import hashlib
 import json
 from flask import Flask,request,jsonify
-from fastecdsa import keys, curve
+from fastecdsa.keys import import_key
+from werkzeug.utils import secure_filename
+import os
+
+SENDER_UPLOAD_FOLDER = './uploads/sender'
+RECIPIENT_UPLOAD_FOLDER = './uploads/recipient'
 
 class Blockchain:
 
@@ -60,6 +65,8 @@ class Blockchain:
     
 
 app = Flask(__name__)
+app.config['SENDER_UPLOAD_FOLDER'] = SENDER_UPLOAD_FOLDER
+app.config['RECIPIENT_UPLOAD_FOLDER']  = RECIPIENT_UPLOAD_FOLDER
 
 blockchain = Blockchain()
 
@@ -74,7 +81,6 @@ def mine():
     response = {
         "message": "Block is created",
         "index": block['index'],
-        "transactions": block['transactions'],
         "proof": block['proof'],
         "block_hash": block['block_hash'],
         "previous_hash" : block['previous_hash']
@@ -84,22 +90,39 @@ def mine():
 
 @app.route('/transactions/new', methods=['POST'])
 def new_transaction():
-    values = request.get_json()
+    amount = request.form.get("amount")
+    print(amount)
 
-    required = ['sender', 'recipient', 'amount']
-
-    if not all(k in values for k in required):
+    if 'sender' not in request.files:
         return 'Missing Values', 400
-    
-    sender = values['sender']
-    recipient = values['recipient']
-    amount = values['amount']
-    index = blockchain.new_transaction(sender,
-                        recipient,amount)
+
+    if 'recipient' not in request.files:
+        return 'Missing Values', 400
+
+    sender = request.files['sender']
+    recipient = request.files['recipient']
+
+    filename_sender = secure_filename(sender.filename)
+    sender.save(os.path.join(app.config['SENDER_UPLOAD_FOLDER'], filename_sender))
+
+    filename_recipient = secure_filename(recipient.filename)
+    recipient.save(os.path.join(app.config['RECIPIENT_UPLOAD_FOLDER'], filename_recipient))
+
+    parsed_d_sender, pub_key_sender = import_key('./uploads/sender/' + filename_sender)
+    parsed_d_recipient, pub_key_recipient = import_key('./uploads/recipient/' + filename_recipient)
+
+
+    os.system('rm -rf ./uploads/sender/' + filename_sender)
+    os.system('rm -rf ./uploads/recipient/' + filename_recipient)
+
+    index = blockchain.new_transaction(pub_key_sender,pub_key_recipient,amount)
     
     response = {
         'message': f'Block #{index}'
         }
+    # response = {
+    #     'message': "done"
+    # }
     return jsonify(response), 201
 
 if __name__ == "__main__":
