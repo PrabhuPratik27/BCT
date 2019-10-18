@@ -1,21 +1,16 @@
-from fastecdsa import keys, curve
+from fastecdsa.keys import import_key
+from fastecdsa import curve,ecdsa
 
-"""The reason there are two ways to generate a keypair is that generating the public key requires
-a point multiplication, which can be expensive. That means sometimes you may want to delay
-generating the public key until it is actually needed."""
+m="This is a message"
 
-# generate a keypair (i.e. both keys) for curve P256
-priv_key_1, pub_key_1 = keys.gen_keypair(curve.P256)
+priv_key , parsed_q = import_key('./priv_key.key')
+parsed_d, pub_key = import_key('./pub_key.pub')
 
-# generate a private key for curve P256
-priv_key_2 = keys.gen_private_key(curve.P256)
+r, s = ecdsa.sign(m, priv_key, curve=curve.secp256k1)
 
-# get the public key corresponding to the private key we just generated
-pub_key_2 = keys.get_public_key(priv_key_2, curve.P256)
+print(r)
+print(s)
 
-print(priv_key_1)
-print(priv_key_2)
+valid = ecdsa.verify((r, s), m, pub_key, curve=curve.secp256k1)
 
-priv_key_3 = keys.gen_private_key(curve.P256)
-
-print(priv_key_3)
+print(valid)
