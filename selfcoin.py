@@ -18,6 +18,7 @@ class Blockchain:
         self.current_transactions = []
         self.chain = []
         self.utxo = {}
+        self.temp_utxo = {}
         self.add_block("0")
     
     @staticmethod
@@ -44,6 +45,16 @@ class Blockchain:
             return self.utxo[pub_key]
         else:
             return 0
+
+    def temp_balance(self,pub_key):
+        if (pub_key in self.temp_utxo.keys()):
+            return self.temp_utxo[pub_key]
+        else:
+            return 0
+
+    def sub_temp_utxo(self,pub_key,amount):
+        self.temp_utxo[pub_key] -= amount
+            
     
     def proof_of_work(self,index,time,previous_hash):
         proof = 0
@@ -68,8 +79,10 @@ class Blockchain:
                 verified_transactions.append(transaction)
                 if(pub_key_receiver.x in self.utxo.keys()):
                     self.utxo[pub_key_receiver.x] += amount
+                    self.temp_utxo[pub_key_receiver.x] += amount
                 else:
                     self.utxo[pub_key_receiver.x] = amount
+                    self.temp_utxo[pub_key_receiver.x] = amount
             else:
                 valid = ecdsa.verify((r, s), m, pub_key, curve=curve.secp256k1)
                 if(valid):
@@ -77,9 +90,13 @@ class Blockchain:
                     if(pub_key_receiver.x in self.utxo.keys()):
                         self.utxo[pub_key_receiver.x] += amount
                         self.utxo[pub_key.x] -= amount
+                        self.temp_utxo[pub_key_receiver.x] += amount
                     else:
                         self.utxo[pub_key_receiver.x] = amount
                         self.utxo[pub_key.x] -= amount
+                        self.temp_utxo[pub_key_receiver.x] = amount
+                else:
+                    self.temp_utxo[pub_key.x] +=amount
 
         return verified_transactions
 
@@ -189,10 +206,12 @@ def new_transaction():
     os.system('rm -rf ./uploads/sender/' + filename_sender)
     os.system('rm -rf ./uploads/recipient/' + filename_recipient)
 
-    balance = blockchain.balance(pub_key_sender.x)
+    balance = blockchain.temp_balance(pub_key_sender.x)
 
     if (balance < amount):
         return 'Nikal Lavde Pehli Fursat Mein Nikal', 400
+
+    blockchain.sub_temp_utxo(pub_key_sender.x,amount)
 
     index = blockchain.new_transaction(pub_key_sender,pub_key_recipient,amount,r,s)
     
