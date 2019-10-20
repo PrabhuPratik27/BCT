@@ -12,6 +12,10 @@ SENDER_UPLOAD_FOLDER = './uploads/sender'
 RECIPIENT_UPLOAD_FOLDER = './uploads/recipient'
 m="This is a message"
 
+"""
+Utxo dictionary kepps balance of each user 
+Temp_utxo is used to temporarily store balance for unmined transactions to avoid double spending
+"""
 class Blockchain:
 
     def __init__(self):
@@ -29,6 +33,18 @@ class Blockchain:
     def last_block(self):
         return self.chain[-1]
 
+    """
+    docstring here 
+        :param sender: The public key of the sender
+        :param recipient: The public key of the recipient
+        :param amount: The amount transacted
+        :param r: The first param of the digital signature
+        :param s: The second param of the digital signature
+
+        returns: The block number of the transaction
+
+        function: To add a new transaction to the blockchain
+    """
     def new_transaction(self, sender, recipient, amount,r,s):
         ts = {
             "sender": sender,
@@ -40,6 +56,12 @@ class Blockchain:
         self.current_transactions.append(ts)
         return self.last_block["index"] + 1
 
+    """
+    docstring here
+        :param pub_key: The publick key of the user
+
+        returns: The balance of the user
+    """  
     def balance(self,pub_key):
         if (pub_key in self.utxo.keys()):
             return self.utxo[pub_key]
@@ -54,8 +76,17 @@ class Blockchain:
 
     def sub_temp_utxo(self,pub_key,amount):
         self.temp_utxo[pub_key] -= amount
-            
-    
+
+    """
+    docstring here
+        :param index: The index of the block in the blockchain
+        :param time: The timestamp of the block creation
+        :param previous_hash: The hash of the previous block
+
+        :returns: proof and headerhash
+
+        :function: Calculates the proof for the proof of work
+    """        
     def proof_of_work(self,index,time,previous_hash):
         proof = 0
         while True:
@@ -65,6 +96,12 @@ class Blockchain:
                 return proof,header_hash
             proof+=1
 
+    """
+    docstring here
+        :returns: a list of verified transactions
+
+        :function: Verifies the transactions for signatures
+    """
     def verify_transactions(self):
         verified_transactions = []
 
@@ -82,7 +119,7 @@ class Blockchain:
                     self.temp_utxo[pub_key_receiver.x] += amount
                 else:
                     self.utxo[pub_key_receiver.x] = amount
-                    self.temp_utxo[pub_key_receiver.x] = amount
+                    self.temp_utxo[pub_key_receiver.x] += amount
             else:
                 valid = ecdsa.verify((r, s), m, pub_key, curve=curve.secp256k1)
                 if(valid):
@@ -94,13 +131,18 @@ class Blockchain:
                     else:
                         self.utxo[pub_key_receiver.x] = amount
                         self.utxo[pub_key.x] -= amount
-                        self.temp_utxo[pub_key_receiver.x] = amount
+                        self.temp_utxo[pub_key_receiver.x] += amount
                 else:
                     self.temp_utxo[pub_key.x] +=amount
 
         return verified_transactions
 
+    """
+    docstring here 
+        :param previous_hash: The hash of the header of the previous block
 
+        function: Adds a block to the blockchain after it is mined.
+    """
     def add_block(self,previous_hash):
         timestamp = time()
         index = len(self.chain) +1
@@ -130,6 +172,13 @@ app.config['RECIPIENT_UPLOAD_FOLDER']  = RECIPIENT_UPLOAD_FOLDER
 
 blockchain = Blockchain()
 
+"""
+docstring here
+    :param '/mine': 
+    :param methods=['POST']: 
+
+    :function The mining route for a wallet
+"""
 @app.route('/mine',methods=['POST'])
 def mine():
     if 'pub_key' not in request.files:
@@ -167,6 +216,13 @@ def mine():
 
     return jsonify(response),200
 
+"""
+docstring here
+    :param '/transactions/new': 
+    :param methods=['POST']: 
+
+    :function Route for new transactions
+"""
 @app.route('/transactions/new', methods=['POST'])
 def new_transaction():
     if 'amount' not in request.form:
@@ -209,7 +265,7 @@ def new_transaction():
     balance = blockchain.temp_balance(pub_key_sender.x)
 
     if (balance < amount):
-        return 'Nikal Lavde Pehli Fursat Mein Nikal', 400
+        return 'Not Enough Balance', 400
 
     blockchain.sub_temp_utxo(pub_key_sender.x,amount)
 
@@ -223,6 +279,13 @@ def new_transaction():
     # }
     return jsonify(response), 201
 
+"""
+docstring here
+    :param '/balance': 
+    :param methods=['POST']: 
+
+    :function: Route for checking balance
+"""
 @app.route('/balance',methods=['POST'])
 def balance():
     if 'pub_key' not in request.files:

@@ -4,12 +4,22 @@ import requests
 
 m="This is a message"
 
+"""
+docstring here
+
+    :function This function generates a public private key pair for the user
+"""
 def generate_keys():
     priv_key = keys.gen_private_key(curve.secp256k1)
     pub_key = keys.get_public_key(priv_key,curve.secp256k1)
     keys.export_key(priv_key,curve=curve.secp256k1,filepath='./priv_key.key')
     keys.export_key(pub_key,curve=curve.secp256k1,filepath='./pub_key.pub')
 
+"""
+docstring here
+
+    :function This function is used to mine blocks by the user
+"""
 def mine():
     priv_key, q = keys.import_key('./priv_key.key')
     r, s = ecdsa.sign(m, priv_key, curve=curve.secp256k1)
@@ -20,6 +30,11 @@ def mine():
     r = requests.post('http://localhost:5000/mine', files=files, data=values)
     print(r.text)
 
+"""
+docstring here
+
+    :function This function isfor the user to make transaction using this wallet 
+"""
 def transaction():
     priv_key, q = keys.import_key('./priv_key.key')
     r, s = ecdsa.sign(m, priv_key, curve=curve.secp256k1)
@@ -36,16 +51,24 @@ def transaction():
     r = requests.post('http://localhost:5000/transactions/new', files=files, data=values)
     print(r.text)
 
+"""
+docstring here
+
+    :function Used to get the balance of the user
+"""
 def balance():
     files={'pub_key': open('./pub_key.pub','rb')}
 
     r = requests.post('http://localhost:5000/balance', files=files)
     print(r.text)
 
+"""
+    This is the main function of the wallet
+""" 
+
 if (not os.path.exists('./pub_key.pub')):
     if (not os.path.exists('./priv_key.key')):
         generate_keys()
-print("Keys hai abhi kaam hoga")
 while (True):
     print("1 for mining")
     print("2 for transactions")
